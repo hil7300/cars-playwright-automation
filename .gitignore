@@ -1,0 +1,16 @@
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+allure-results/
+credentials.json
+CARS_Automation_Demo.pptx
+DEMO.md
+automation-accounts.txt
+DeleteAllFiles.spec.ts
+handover.md
+handover.pdf
+SETUP.pdf

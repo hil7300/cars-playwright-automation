@@ -1,0 +1,23 @@
+{
+    "loginPages": {
+        "dev": "https://dev.carecovery.ca/auth/login",
+        "stg": "https://staging.carecovery.ca/auth/login",
+        "prod": "https://carecovery.ca/auth/login",
+        "local": "http://localhost:3000/auth/login"
+    },
+    "apiEndpoints": {
+        "dev": "https://dev-api.carecovery.ca",
+        "stg": "https://staging-api.carecovery.ca",
+        "local": "http://localhost:8080"
+    },
+    "apiAudiences": {
+        "dev": "https://dev-api.carecovery.ca",
+        "stg": "https://staging-api.carecovery.ca",
+        "local": "https://dev-api.carecovery.ca"
+    },
+    "authEndpoints": {
+        "dev": "https://auth.dev.carecovery.ca",
+        "stg": "https://auth.staging.carecovery.ca",
+        "local": "https://auth.dev.carecovery.ca"
+    }
+}

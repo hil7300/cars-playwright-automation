@@ -1,0 +1,188 @@
+name: CARS Playwright Automation[DEV]
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 12 AM Eastern Time
+    # GitHub Actions cron is UTC only:
+    #   '0 4 * * *' = 12 AM EDT (summer, Mar–Nov) / 11 PM EST the previous night (winter)
+    #   '0 5 * * *' = 1 AM EDT (summer) / 12 AM EST (winter)
+    # Using 0 4 * * * since we're currently in EDT.
+    - cron: '0 4 * * *'
+
+jobs:
+
+  CARS-DEV-TEST:
+    timeout-minutes: 150
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned to 24.15.0 on purpose. Node 24.16+ (and v26) has a regression
+          # that makes `playwright install` hang at 100% during extraction.
+          # Fixed in Playwright >= 1.60.0; once Playwright is upgraded past that,
+          # this can be relaxed back to lts/* if desired.
+          node-version: 24.15.0
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install Playwright browser
+        # Only Chromium is installed to avoid the slow Firefox/WebKit
+        # extraction on Windows runners. Add 'firefox' / 'webkit' here
+        # only if your tests actually use them.
+        # Step-level timeout so a hang fails fast instead of burning the 150-min job.
+        timeout-minutes: 10
+        run: npx playwright install chromium --with-deps
+
+      - name: Run tests
+        run: npm run dev:test
+        env:
+          # --- Auth0 credentials ---
+          CARS_DEV_AUTH0_CLIENT_ID: ${{ secrets.CARS_DEV_AUTH0_CLIENT_ID }}
+          CARS_DEV_AUTH0_CLIENT_SECRET: ${{ secrets.CARS_DEV_AUTH0_CLIENT_SECRET }}
+
+          # --- Super Admin (3 workers) ---
+          CARS_DEV_SUPER_ADMIN_USERNAME_0: ${{ secrets.CARS_DEV_SUPER_ADMIN_USERNAME_0 }}
+          CARS_DEV_SUPER_ADMIN_PASSWORD_0: ${{ secrets.CARS_DEV_SUPER_ADMIN_PASSWORD_0 }}
+          CARS_DEV_SUPER_ADMIN_USERNAME_1: ${{ secrets.CARS_DEV_SUPER_ADMIN_USERNAME_1 }}
+          CARS_DEV_SUPER_ADMIN_PASSWORD_1: ${{ secrets.CARS_DEV_SUPER_ADMIN_PASSWORD_1 }}
+          CARS_DEV_SUPER_ADMIN_USERNAME_2: ${{ secrets.CARS_DEV_SUPER_ADMIN_USERNAME_2 }}
+          CARS_DEV_SUPER_ADMIN_PASSWORD_2: ${{ secrets.CARS_DEV_SUPER_ADMIN_PASSWORD_2 }}
+
+          # --- Basic Admin (3 workers) ---
+          CARS_DEV_BASIC_ADMIN_USERNAME_0: ${{ secrets.CARS_DEV_BASIC_ADMIN_USERNAME_0 }}
+          CARS_DEV_BASIC_ADMIN_PASSWORD_0: ${{ secrets.CARS_DEV_BASIC_ADMIN_PASSWORD_0 }}
+          CARS_DEV_BASIC_ADMIN_USERNAME_1: ${{ secrets.CARS_DEV_BASIC_ADMIN_USERNAME_1 }}
+          CARS_DEV_BASIC_ADMIN_PASSWORD_1: ${{ secrets.CARS_DEV_BASIC_ADMIN_PASSWORD_1 }}
+          CARS_DEV_BASIC_ADMIN_USERNAME_2: ${{ secrets.CARS_DEV_BASIC_ADMIN_USERNAME_2 }}
+          CARS_DEV_BASIC_ADMIN_PASSWORD_2: ${{ secrets.CARS_DEV_BASIC_ADMIN_PASSWORD_2 }}
+
+          # --- Manager Admin (3 workers) ---
+          CARS_DEV_MANAGER_ADMIN_USERNAME_0: ${{ secrets.CARS_DEV_MANAGER_ADMIN_USERNAME_0 }}
+          CARS_DEV_MANAGER_ADMIN_PASSWORD_0: ${{ secrets.CARS_DEV_MANAGER_ADMIN_PASSWORD_0 }}
+          CARS_DEV_MANAGER_ADMIN_USERNAME_1: ${{ secrets.CARS_DEV_MANAGER_ADMIN_USERNAME_1 }}
+          CARS_DEV_MANAGER_ADMIN_PASSWORD_1: ${{ secrets.CARS_DEV_MANAGER_ADMIN_PASSWORD_1 }}
+          CARS_DEV_MANAGER_ADMIN_USERNAME_2: ${{ secrets.CARS_DEV_MANAGER_ADMIN_USERNAME_2 }}
+          CARS_DEV_MANAGER_ADMIN_PASSWORD_2: ${{ secrets.CARS_DEV_MANAGER_ADMIN_PASSWORD_2 }}
+
+          # --- Bailiff (3 workers) ---
+          CARS_DEV_BAILIFF_USERNAME_0: ${{ secrets.CARS_DEV_BAILIFF_USERNAME_0 }}
+          CARS_DEV_BAILIFF_PASSWORD_0: ${{ secrets.CARS_DEV_BAILIFF_PASSWORD_0 }}
+          CARS_DEV_BAILIFF_USERNAME_1: ${{ secrets.CARS_DEV_BAILIFF_USERNAME_1 }}
+          CARS_DEV_BAILIFF_PASSWORD_1: ${{ secrets.CARS_DEV_BAILIFF_PASSWORD_1 }}
+          CARS_DEV_BAILIFF_USERNAME_2: ${{ secrets.CARS_DEV_BAILIFF_USERNAME_2 }}
+          CARS_DEV_BAILIFF_PASSWORD_2: ${{ secrets.CARS_DEV_BAILIFF_PASSWORD_2 }}
+
+          # --- Client (3 workers) ---
+          CARS_DEV_CLIENT_USERNAME_0: ${{ secrets.CARS_DEV_CLIENT_USERNAME_0 }}
+          CARS_DEV_CLIENT_PASSWORD_0: ${{ secrets.CARS_DEV_CLIENT_PASSWORD_0 }}
+          CARS_DEV_CLIENT_USERNAME_1: ${{ secrets.CARS_DEV_CLIENT_USERNAME_1 }}
+          CARS_DEV_CLIENT_PASSWORD_1: ${{ secrets.CARS_DEV_CLIENT_PASSWORD_1 }}
+          CARS_DEV_CLIENT_USERNAME_2: ${{ secrets.CARS_DEV_CLIENT_USERNAME_2 }}
+          CARS_DEV_CLIENT_PASSWORD_2: ${{ secrets.CARS_DEV_CLIENT_PASSWORD_2 }}
+
+          # --- API Automation (2 workers) ---
+          CARS_DEV_API_AUTOMATION_USERNAME_0: ${{ secrets.CARS_DEV_API_AUTOMATION_USERNAME_0 }}
+          CARS_DEV_API_AUTOMATION_PASSWORD_0: ${{ secrets.CARS_DEV_API_AUTOMATION_PASSWORD_0 }}
+          CARS_DEV_API_AUTOMATION_USERNAME_1: ${{ secrets.CARS_DEV_API_AUTOMATION_USERNAME_1 }}
+          CARS_DEV_API_AUTOMATION_PASSWORD_1: ${{ secrets.CARS_DEV_API_AUTOMATION_PASSWORD_1 }}
+
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+
+      - name: Parse summary
+        if: always()
+        run: npm run parse:summary
+
+      - name: Build regression report
+        if: always()
+        run: npm run dev:regression-report
+
+      - name: Notify Teams
+        if: always()
+        run: npm run dev:notify-teams
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            playwright-report/index.html
+            playwright-report/regression-report.html
+            playwright-report/summary.txt
+          retention-days: 3
+
+  Sending-email:
+    if: ${{ always() }}
+    needs: CARS-DEV-TEST
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24.15.0
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: test-results
+        path: ${{ github.workspace }}/test-results
+
+    - name: Read summary.txt into variable
+      id: read_summary
+      shell: powershell
+      run: |
+        $summaryPath = "${{ github.workspace }}/test-results/summary.txt"
+        if (Test-Path $summaryPath) {
+        $content = Get-Content -Raw -Path $summaryPath
+        echo "SUMMARY_CONTENT<<EOF" >> $env:GITHUB_ENV
+        echo "$content" >> $env:GITHUB_ENV
+        echo "EOF" >> $env:GITHUB_ENV
+        } else {
+        echo "SUMMARY_CONTENT=Summary file missing." >> $env:GITHUB_ENV
+        }
+    - name: Put GITHUB_WORKSPACE into a variable
+      run: |
+        $workspacePath = $env:GITHUB_WORKSPACE
+        echo "workspacePath=$workspacePath" >> $env:GITHUB_ENV
+    - name: Put current date into a variable
+      run: |
+        $NOW=& Get-Date -format yyyy-MM-dd
+        echo "NOW=$NOW" >> $env:GITHUB_ENV
+    - name: Send email
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.EMAIL_SERVER_ADDRESS }}
+        server_port: ${{ secrets.EMAIL_SERVER_PORT }}
+        secure: true
+        username: ${{ secrets.RESULTS_EMAIL }}
+        password: ${{ secrets.RESULTS_EMAIL_PASSWORD }}
+        subject: CARS Playwright Automation[DEV] Report ${{env.NOW}}
+        to: carssupport@cancapgroup.ca, cars-qa-automation-reports - RecoveryHub Engineering <ac5b90c0.autocapitalcanada.ca@amer.teams.ms>
+        from: noreply@carecovery.ca
+        body: |
+          Hello,
+          Attached you will find the CARS DEV AUTOMATION results for ${{ env.NOW }}.
+          === Test Summary ===
+          ${{ env.SUMMARY_CONTENT }}
+          Warm Regards,
+          QA Automation Team
+        attachments: |
+          ${{ github.workspace }}/test-results/regression-report.html
+          ${{ github.workspace }}/test-results/index.html

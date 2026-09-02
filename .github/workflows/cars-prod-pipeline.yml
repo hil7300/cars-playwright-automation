@@ -1,0 +1,116 @@
+name: CARS Playwright Automation[PROD]
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 22 * * 1-5'
+
+jobs:
+
+  CARS-PROD-TEST:
+    timeout-minutes: 150
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup Playwright, Install Dependencies, and Run Tests
+        run: |
+          npm ci;
+          npx playwright install --with-deps;
+          npm run prod:smoke;
+          npm run create-allure-report;
+          npm run parse:summary;
+          npm run regression-report;
+          npm run prod:notify-teams;
+
+        env:
+          CARS_PROD_SUPER_ADMIN_4_USERNAME: ${{ secrets.CARS_PROD_SUPER_ADMIN_4_USERNAME }}
+          CARS_PROD_SUPER_ADMIN_4_PASSWORD: ${{ secrets.CARS_PROD_SUPER_ADMIN_4_PASSWORD }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            playwright-report/index.html
+            playwright-report/allure-report
+            playwright-report/regression-report.html
+            playwright-report/summary.txt
+          retention-days: 7
+
+  Sending-email:
+    if: ${{ always() }}
+    needs: CARS-PROD-TEST
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: ${{ github.workspace }}/test-results
+
+      - name: Read summary.txt into variable
+        id: read_summary
+        shell: powershell
+        run: |
+          $summaryPath = "${{ github.workspace }}/test-results/summary.txt"
+          if (Test-Path $summaryPath) {
+            $content = Get-Content -Raw -Path $summaryPath
+            echo "SUMMARY_CONTENT<<EOF" >> $env:GITHUB_ENV
+            echo "$content" >> $env:GITHUB_ENV
+            echo "EOF" >> $env:GITHUB_ENV
+          } else {
+            echo "SUMMARY_CONTENT=Summary file missing." >> $env:GITHUB_ENV
+          }
+
+      - name: Put GITHUB_WORKSPACE into a variable
+        run: |
+          $workspacePath = $env:GITHUB_WORKSPACE
+          echo "workspacePath=$workspacePath" >> $env:GITHUB_ENV
+
+      - name: Put current date into a variable
+        run: |
+          $NOW=& Get-Date -format yyyy-MM-dd
+          echo "NOW=$NOW" >> $env:GITHUB_ENV
+
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.EMAIL_SERVER_ADDRESS }}
+          server_port: ${{ secrets.EMAIL_SERVER_PORT }}
+          secure: true
+          username: ${{ secrets.RESULTS_EMAIL }}
+          password: ${{ secrets.RESULTS_EMAIL_PASSWORD }}
+          subject: CARS Playwright Automation[PROD] Report ${{ env.NOW }}
+          to: hchaudhari@cancapgroup.ca
+          from: noreply@carecovery.ca
+          body: |
+            Hello,
+
+            Attached you will find the CARS PROD AUTOMATION results for ${{ env.NOW }}.
+
+            === Test Summary ===
+            ${{ env.SUMMARY_CONTENT }}
+
+            Warm Regards,
+            QA Automation Team
+
+          attachments: |
+            ${{ github.workspace }}/test-results/regression-report.html
+          # ${{ github.workspace }}/test-results/index.html
+          # ${{ github.workspace }}/test-results/allure-report/index.html
